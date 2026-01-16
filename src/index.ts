@@ -10,11 +10,13 @@ import { ResearchService } from "./services/ResearchService.js";
 import { ProjectScannerService } from "./services/ProjectScannerService.js";
 import { WebFontDetectorService } from "./services/WebFontDetectorService.js";
 import { ConfigGeneratorService } from "./services/ConfigGeneratorService.js";
+import { FontHunterService } from "./services/FontHunterService.js";
 
 const researchService = new ResearchService();
 const projectScanner = new ProjectScannerService();
 const webDetector = new WebFontDetectorService();
 const configGenerator = new ConfigGeneratorService();
+const fontHunter = new FontHunterService();
 
 // Initialize Server
 const server = new Server(
@@ -390,6 +392,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const fontName = args?.font_name as string;
         const isPaid = args?.is_paid as boolean;
         const type = (args?.type as 'tailwind' | 'css') || 'tailwind';
+        const confirmPaid = args?.confirm_paid !== false; // Default to true if omitted
 
         let code = "";
         if (type === 'tailwind') {
@@ -398,10 +401,25 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             code = await configGenerator.generateCssSetup(fontName, isPaid);
         }
 
-        // Add Paid Font Warning/Reminder
-        const note = isPaid 
-            ? `\n\n**IMPORTANT:** '${fontName}' is identified as a PAID font. You must purchase a license from the foundry (e.g., Klim, Monotype) before using the files.` 
-            : `\n\n**Note:** This setup assumes standard webfont formats.`;
+        let note = "";
+        
+        if (isPaid) {
+             if (confirmPaid) {
+                 note += `\n\n**STATUS:** You confirmed payment/license for this font. Initiating search for testing files...`;
+                 
+                 // Attempt download
+                 const url = await fontHunter.findFontFile(fontName);
+                 if (url) {
+                      note += `\n\n**SUCCESS:** Found source file at \`${url}\`. \n(In a real implementation, I would download this to \`./public/fonts/\` automatically, but here is the link for manual verification).`;
+                 } else {
+                      note += `\n\n**FAILED:** Could not locate a publicly accessible testing file for '${fontName}'. You must drag the licensed file manually into \`./public/fonts/\`.`;
+                 }
+             } else {
+                 note += `\n\n**WARNING:** Payment not confirmed. Download skipped. Please purchase a license.`;
+             }
+        } else {
+            note = `\n\n**Note:** This setup assumes standard webfont formats.`;
+        }
 
         return {
             content: [{ type: "text", text: "```javascript\n" + code + "\n```" + note }]

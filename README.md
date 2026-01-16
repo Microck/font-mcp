@@ -1,15 +1,17 @@
 # font mcp
 
-an expert design advisor mcp that finds the best fonts for your project.
+an expert design advisor mcp that finds, pairs, and sets up the best fonts for your project.
 
-it doesn't just list fonts. it researches live discussions (reddit, typewolf) and scans your project files to give opinionated, context-aware recommendations.
+it doesn't just list fonts. it researches live discussions (reddit, typewolf), scans your project files for "vibe", and even helps you hunt down font files for testing.
 
 ## features
 
 - **live research**: searches reddit (r/typography, r/web_design) and design archives for real-world usage examples from the last year.
 - **project scanning**: analyzes your `package.json` and config files to detect your project's "vibe" (e.g., "tech startup" vs "luxury fashion").
+- **steal this look**: scans any website url to identify what fonts they are using (even hidden adobe/typekit ones).
+- **auto-setup**: generates tailwind or css config for your chosen font.
+- **font hunter**: attempts to find testing/trial files for paid fonts (if you confirm you have a license).
 - **curated vault**: includes a hardcoded database of s-tier fonts (helvetica now, ogg, satoshi) as a fallback.
-- **expert pairings**: suggests proven font combinations.
 
 ## usage
 
@@ -17,6 +19,8 @@ it doesn't just list fonts. it researches live discussions (reddit, typewolf) an
 
 - `consult_font_expert`: get recommendations based on a vibe or description.
 - `analyze_project_and_recommend`: auto-detects vibe from your project path and recommends fonts.
+- `analyze_website`: reverse-engineers the typography of any website url.
+- `setup_font_config`: generates tailwind/css code and attempts to download font files for verified license holders.
 - `get_font_details`: get history, download links, and pricing for a specific font.
 
 ### example
@@ -27,6 +31,18 @@ it doesn't just list fonts. it researches live discussions (reddit, typewolf) an
   "arguments": {
     "vibe": "brutalist architecture portfolio",
     "allow_paid": true
+  }
+}
+```
+
+```json
+{
+  "name": "setup_font_config",
+  "arguments": {
+    "font_name": "Helvetica Now",
+    "is_paid": true,
+    "type": "tailwind",
+    "confirm_paid": true
   }
 }
 ```
