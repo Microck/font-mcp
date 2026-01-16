@@ -5,8 +5,12 @@ import { z } from "zod";
 import { curatedFonts } from "./data/curatedFonts.js";
 import { ResearchService } from "./services/ResearchService.js";
 import { ProjectScannerService } from "./services/ProjectScannerService.js";
+import { WebFontDetectorService } from "./services/WebFontDetectorService.js";
+import { ConfigGeneratorService } from "./services/ConfigGeneratorService.js";
 const researchService = new ResearchService();
 const projectScanner = new ProjectScannerService();
+const webDetector = new WebFontDetectorService();
+const configGenerator = new ConfigGeneratorService();
 // Initialize Server
 const server = new Server({
     name: "font-mcp",
@@ -289,6 +293,46 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 : `${intro}Here are my top recommendations:\n\n${text}`;
             return {
                 content: [{ type: "text", text: combinedOutput }]
+            };
+        }
+        if (name === "analyze_website") {
+            const url = args?.url;
+            try {
+                const fonts = await webDetector.analyzeUrl(url);
+                if (fonts.length === 0) {
+                    return {
+                        content: [{ type: "text", text: `I couldn't detect specific font families on ${url}. They might be using complex canvas rendering or obscured classes.` }]
+                    };
+                }
+                const fontList = fonts.map(f => `- **${f.family}** (${f.source})\n  *Type:* ${f.isPaidLikely ? 'Likely Paid/Custom' : 'Free/Open Source'}`).join('\n');
+                return {
+                    content: [{ type: "text", text: `I found the following fonts on ${url}:\n\n${fontList}\n\nTo get setup instructions, use 'setup_font_config'.` }]
+                };
+            }
+            catch (e) {
+                return {
+                    content: [{ type: "text", text: `Error analyzing website: ${e}` }],
+                    isError: true
+                };
+            }
+        }
+        if (name === "setup_font_config") {
+            const fontName = args?.font_name;
+            const isPaid = args?.is_paid;
+            const type = args?.type || 'tailwind';
+            let code = "";
+            if (type === 'tailwind') {
+                code = await configGenerator.generateTailwindConfig(fontName);
+            }
+            else {
+                code = await configGenerator.generateCssSetup(fontName, isPaid);
+            }
+            // Add Paid Font Warning/Reminder
+            const note = isPaid
+                ? `\n\n**IMPORTANT:** '${fontName}' is identified as a PAID font. You must purchase a license from the foundry (e.g., Klim, Monotype) before using the files.`
+                : `\n\n**Note:** This setup assumes standard webfont formats.`;
+            return {
+                content: [{ type: "text", text: "```javascript\n" + code + "\n```" + note }]
             };
         }
         throw new Error(`Tool ${name} not found`);

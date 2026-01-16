@@ -7,6 +7,7 @@ export interface ResearchResult {
     fonts: string[];
     context: string;
     url: string;
+    imageUrl?: string;
 }
 
 export class ResearchService {
@@ -34,6 +35,7 @@ export class ResearchService {
 
                 const title = $(el).find('h2 a').text().trim();
                 const link = $(el).find('h2 a').attr('href');
+                const imgUrl = $(el).find('img').attr('src'); // NEW: Get image preview
                 const fonts: string[] = [];
 
                 // Typewolf usually lists fonts in the meta or content
@@ -49,7 +51,8 @@ export class ResearchService {
                         source: 'Typewolf',
                         fonts: [...new Set(fonts)], // Dedup
                         context: title,
-                        url: link
+                        url: link,
+                        imageUrl: imgUrl // Pass it through
                     });
                 }
             });
@@ -88,7 +91,8 @@ export class ResearchService {
                         source: 'FontsInUse',
                         fonts: [...new Set(fonts)],
                         context: title,
-                        url: link
+                        url: link,
+                        imageUrl: $(el).find('img').attr('data-src') || $(el).find('img').attr('src') // Try lazy load attr
                     });
                 }
             });
@@ -126,6 +130,9 @@ export class ResearchService {
 
         allResults.forEach(res => {
             output += `### ${res.context}\n`;
+            if (res.imageUrl) {
+                output += `![Preview](${res.imageUrl})\n`;
+            }
             output += `*Source:* ${res.source}\n`;
             if (res.fonts.length > 0) {
                 output += `*Fonts Identified:* ${res.fonts.join(', ')}\n`;
