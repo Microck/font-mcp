@@ -47,6 +47,16 @@ it doesn't just list fonts. it researches live discussions (reddit, typewolf), s
 }
 ```
 
+## legal warning
+
+**read this before using.**
+
+this tool includes a "font hunter" feature that helps you find font files for testing. **you must own a valid license** for any commercial font you use.
+
+- downloading fonts you haven't paid for is piracy.
+- this tool assumes you have purchased a license and simply need the files for local dev.
+- the creators of this tool accept no liability for misuse. **pay your type designers.**
+
 ## installation
 
 ```bash
@@ -56,14 +66,14 @@ npm install
 npm run build
 ```
 
-add to your mcp client config:
+add to your mcp client config (e.g., `claude_desktop_config.json` or `opencode`):
 
 ```json
 {
   "mcpServers": {
     "font-mcp": {
       "command": "node",
-      "args": ["/path/to/font-mcp/dist/index.js"]
+      "args": ["C:/Users/Microck/Documents/GitHub/font-mcp/dist/index.js"]
     }
   }
 }

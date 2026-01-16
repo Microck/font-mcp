@@ -178,7 +178,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             const vibe = args?.vibe;
             const category = args?.category;
             const allowPaid = args?.allow_paid !== false; // Default true
-            // Dynamic research first
+            // Dynamic research first (PRIORITY)
             let expertResearch = "";
             try {
                 expertResearch = await researchService.getExpertRecommendations(vibe);
@@ -186,8 +186,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             catch (e) {
                 console.error("Research failed, falling back to static DB");
             }
+            // Only load curated vault if research returned NOTHING or very little
             const recommendations = filterFonts(vibe, category, allowPaid);
-            if (recommendations.length === 0 && !expertResearch) {
+            if (!expertResearch && recommendations.length === 0) {
                 return {
                     content: [
                         {
@@ -205,9 +206,19 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 `*Cost:* ${f.isPaid ? "Paid ($)" : "Free"}\n` +
                 `*Link:* ${f.isPaid ? f.purchaseLink : f.downloadLink}\n`)
                 .join("\n");
-            const combinedOutput = expertResearch
-                ? `${expertResearch}\n\n---\n\n**Also consider these verified classics from my personal vault:**\n\n${text}`
-                : `Here are my top recommendations for "${vibe}":\n\n${text}`;
+            // Logic: If research exists, show ONLY research. If not, show curated.
+            // We essentially hide the curated list unless research failed or user specifically asked for "classics".
+            let combinedOutput = "";
+            if (expertResearch) {
+                combinedOutput = expertResearch;
+                // Append curated ONLY if the vibe strongly matches a known classic category to ensure quality backup
+                if (recommendations.length > 0 && expertResearch.length < 500) {
+                    combinedOutput += `\n\n---\n\n**Backup Options (Curated Vault):**\n\n${text}`;
+                }
+            }
+            else {
+                combinedOutput = `My live research agents came up empty for "${vibe}". Falling back to my curated vault:\n\n${text}`;
+            }
             return {
                 content: [{ type: "text", text: combinedOutput }],
             };
