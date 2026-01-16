@@ -6,7 +6,7 @@ it doesn't just list fonts. it researches live discussions (reddit, typewolf), s
 
 ## quickstart for ai agents
 
-paste this command to your ai assistant (cursor, windsurf, claude desktop):
+paste this command to your ai assistant (cursor, windsurf, opencode, claude desktop):
 
 ```bash
 # install font-mcp
@@ -16,6 +16,8 @@ npm install
 npm run build
 
 # add to mcp config
+# for opencode users:
+mkdir -p ~/.config/opencode/mcp
 echo '{
   "mcpServers": {
     "font-mcp": {
@@ -23,7 +25,10 @@ echo '{
       "args": ["'$(pwd)'/dist/index.js"]
     }
   }
-}' > ~/font-mcp-config.json
+}' > ~/.config/opencode/mcp/font-mcp.json
+
+# for claude desktop / cursor:
+# copy path to dist/index.js and add to your config manually
 ```
 
 ## features
