@@ -1,19 +1,43 @@
-# font mcp installer
+# installing font-mcp for codex/cursor/windsurf
 
-this script installs the font-mcp server and configures it for your ai agent.
+## prerequisites
 
-1. clones the repo to `~/font-mcp`.
-2. builds the project.
-3. adds the mcp server config.
+- node.js 18+ installed
+- git installed
 
-## instructions for agent
+## installation steps
 
-run the following bash command:
+### 1. clone and build
 
 ```bash
-git clone https://github.com/microck/font-mcp.git ~/font-mcp && \
-cd ~/font-mcp && \
-npm install && \
-npm run build && \
-echo "add this to your mcp config: {\"mcpServers\":{\"font-mcp\":{\"command\":\"node\",\"args\":[\"$(pwd)/dist/index.js\"]}}}"
+git clone https://github.com/microck/font-mcp.git ~/font-mcp
+cd ~/font-mcp
+npm install
+npm run build
 ```
+
+### 2. configure your agent
+
+add the following to your agent's MCP configuration file (e.g., `claude_desktop_config.json` or cursor settings):
+
+```json
+{
+  "mcpServers": {
+    "font-mcp": {
+      "command": "node",
+      "args": ["/absolute/path/to/home/font-mcp/dist/index.js"]
+    }
+  }
+}
+```
+
+*note: replace `/absolute/path/to/home` with your actual home directory path.*
+
+### 3. restart
+
+restart your ide or agent service.
+
+## usage
+
+ask your agent:
+> find me a font for a luxury tech brand
