@@ -4,6 +4,28 @@ an expert design advisor mcp that finds, pairs, and sets up the best fonts for y
 
 it doesn't just list fonts. it researches live discussions (reddit, typewolf), scans your project files for "vibe", and even helps you hunt down font files for testing.
 
+## quickstart for ai agents
+
+paste this command to your ai assistant (cursor, windsurf, claude desktop):
+
+```bash
+# install font-mcp
+git clone https://github.com/microck/font-mcp.git ~/font-mcp
+cd ~/font-mcp
+npm install
+npm run build
+
+# add to mcp config
+echo '{
+  "mcpServers": {
+    "font-mcp": {
+      "command": "node",
+      "args": ["'$(pwd)'/dist/index.js"]
+    }
+  }
+}' > ~/font-mcp-config.json
+```
+
 ## features
 
 - **live research**: searches reddit (r/typography, r/web_design) and design archives for real-world usage examples from the last year.
