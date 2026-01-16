@@ -6,11 +6,13 @@ it doesn't just list fonts. it researches live discussions (reddit, typewolf), s
 
 ## quickstart for ai agents
 
-paste this command to your ai assistant (cursor, windsurf, opencode, claude desktop):
+**opencode**
+tell opencode:
+> fetch and follow instructions from https://raw.githubusercontent.com/microck/font-mcp/master/.opencode/INSTALL.md
 
-```bash
-git clone https://github.com/microck/font-mcp.git ~/font-mcp && cd ~/font-mcp && npm install && npm run build && mkdir -p ~/.config/opencode/mcp && echo '{"mcpServers":{"font-mcp":{"command":"node","args":["'$(pwd)'/dist/index.js"]}}}' > ~/.config/opencode/mcp/font-mcp.json
-```
+**codex / cursor / other**
+tell your agent:
+> fetch and follow instructions from https://raw.githubusercontent.com/microck/font-mcp/master/.codex/INSTALL.md
 
 ## features
 
