@@ -1,18 +1,26 @@
-# font mcp
+# font-MCP
 
-an expert design advisor mcp that finds, pairs, and sets up the best fonts for your project.
+an expert design advisor mcp that finds, pairs, and sets up the best fonts for your project. it researches live discussions (reddit, typewolf), scans your project files for the aesthetic, and even helps you hunt down font files for testing.
 
-it doesn't just list fonts. it researches live discussions (reddit, typewolf), scans your project files for "vibe", and even helps you hunt down font files for testing.
+## installation
 
-## quickstart for ai agents
+**note:** installation is streamlined for ai-native environments.
 
-**opencode**
+### codex
+
+tell codex:
+
+```
+Fetch and follow instructions from https://raw.githubusercontent.com/microck/font-mcp/master/.codex/INSTALL.md
+```
+
+### opencode
+
 tell opencode:
-> fetch and follow instructions from https://raw.githubusercontent.com/microck/font-mcp/master/.opencode/INSTALL.md
 
-**codex / cursor / other**
-tell your agent:
-> fetch and follow instructions from https://raw.githubusercontent.com/microck/font-mcp/master/.codex/INSTALL.md
+```
+Fetch and follow instructions from https://raw.githubusercontent.com/microck/font-mcp/master/.opencode/INSTALL.md
+```
 
 ## features
 
