@@ -21,19 +21,21 @@ npm run build
 
 ### 2. register the mcp server
 
-configure opencode to use this server by creating the config file:
+configure opencode to use this server by adding it to your `~/.config/opencode/opencode.json` file under the `"mcp"` key:
 
-```bash
-mkdir -p ~/.config/opencode/mcp
-echo '{
-  "mcpServers": {
-    "font-mcp": {
-      "command": "node",
-      "args": ["'$(pwd)'/dist/index.js"]
-    }
-  }
-}' > ~/.config/opencode/mcp/font-mcp.json
+```json
+"font-mcp": {
+  "type": "local",
+  "command": [
+    "node",
+    "ABSOLUTE_PATH_TO_FONT_MCP/dist/index.js"
+  ],
+  "enabled": true
+}
 ```
+
+replace `ABSOLUTE_PATH_TO_FONT_MCP` with the actual path where you cloned the repository.
+
 
 ### 3. restart opencode
 
@@ -56,8 +58,9 @@ you can now use commands like:
 ### server not found
 
 1. check if the file exists: `ls ~/font-mcp/dist/index.js`
-2. verify config: `cat ~/.config/opencode/mcp/font-mcp.json`
+2. verify config: check `"font-mcp"` entry in `~/.config/opencode/opencode.json`
 3. ensure node is in your path.
+
 
 ### permission denied
 
