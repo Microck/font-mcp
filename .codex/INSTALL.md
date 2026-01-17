@@ -18,20 +18,21 @@ npm run build
 
 ### 2. configure your agent
 
-add the following to your agent's MCP configuration file (e.g., `claude_desktop_config.json` or cursor settings):
+add the following to your `~/.config/opencode/opencode.json` file under the `"mcp"` key:
 
 ```json
-{
-  "mcpServers": {
-    "font-mcp": {
-      "command": "node",
-      "args": ["/absolute/path/to/home/font-mcp/dist/index.js"]
-    }
-  }
+"font-mcp": {
+  "type": "local",
+  "command": [
+    "node",
+    "ABSOLUTE_PATH_TO_FONT_MCP/dist/index.js"
+  ],
+  "enabled": true
 }
 ```
 
-*note: replace `/absolute/path/to/home` with your actual home directory path.*
+*note: replace `ABSOLUTE_PATH_TO_FONT_MCP` with your actual absolute path to the cloned repository.*
+
 
 ### 3. restart
 
