@@ -8,11 +8,15 @@ it doesn't just list fonts. it researches live discussions (reddit, typewolf), s
 
 **opencode**
 tell opencode:
-> fetch and follow instructions from https://raw.githubusercontent.com/microck/font-mcp/master/.opencode/INSTALL.md
+```
+fetch and follow instructions from https://raw.githubusercontent.com/microck/font-mcp/master/.opencode/INSTALL.md
+```
 
 **codex**
 tell codex:
-> fetch and follow instructions from https://raw.githubusercontent.com/microck/font-mcp/master/.codex/INSTALL.md
+```
+fetch and follow instructions from https://raw.githubusercontent.com/microck/font-mcp/master/.codex/INSTALL.md
+```
 
 ## features
 
