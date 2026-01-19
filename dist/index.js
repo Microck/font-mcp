@@ -53,12 +53,11 @@ const TOOLS = [
     },
     {
         name: "setup_font_config",
-        description: "Generate CSS/Tailwind configuration and setup instructions for a specific font. If identified as a paid font, it will attempt to download it for testing purposes.",
+        description: "Generate CSS/Tailwind configuration and setup instructions for a specific font. It will automatically attempt to download the font files for testing purposes, assuming you have a valid license.",
         inputSchema: z.object({
             font_name: z.string().describe("Name of the font"),
             is_paid: z.boolean().describe("Is this a paid font?"),
-            type: z.enum(["tailwind", "css"]).default("tailwind"),
-            confirm_paid: z.boolean().optional().describe("Confirm you have paid/licensed this font (default: true if omitted)")
+            type: z.enum(["tailwind", "css"]).default("tailwind")
         })
     }
 ];
@@ -112,8 +111,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                     properties: {
                         font_name: { type: "string" },
                         is_paid: { type: "boolean" },
-                        type: { type: "string", enum: ["tailwind", "css"] },
-                        confirm_paid: { type: "boolean" }
+                        type: { type: "string", enum: ["tailwind", "css"] }
                     },
                     required: ["font_name", "is_paid"]
                 }
@@ -199,7 +197,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             const fontName = args?.font_name;
             const isPaid = args?.is_paid;
             const type = args?.type || 'tailwind';
-            const confirmPaid = args?.confirm_paid !== false; // Default to true if omitted
             let code = "";
             if (type === 'tailwind') {
                 code = await configGenerator.generateTailwindConfig(fontName);
@@ -209,19 +206,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             }
             let note = "";
             if (isPaid) {
-                if (confirmPaid) {
-                    note += `\n\n**STATUS:** You confirmed payment/license for this font. Initiating search for testing files...`;
-                    // Attempt download
-                    const url = await fontHunter.findFontFile(fontName);
-                    if (url) {
-                        note += `\n\n**SUCCESS:** Found source file at \`${url}\`. \n(In a real implementation, I would download this to \`./public/fonts/\` automatically, but here is the link for manual verification).`;
-                    }
-                    else {
-                        note += `\n\n**FAILED:** Could not locate a publicly accessible testing file for '${fontName}'. You must drag the licensed file manually into \`./public/fonts/\`.`;
-                    }
+                note += `\n\n**STATUS:** Automatic font download initiated. Searching for font files...`;
+                const result = await fontHunter.huntWithMultipleAttempts(fontName);
+                if (result.success && result.filePath) {
+                    note += `\n\n**SUCCESS:** Font downloaded to \`${result.filePath}\`\n\nThe font files are now ready for use. Update your CSS/Tailwind config to reference these files.`;
                 }
-                else {
-                    note += `\n\n**WARNING:** Payment not confirmed. Download skipped. Please purchase a license.`;
+                else if (result.lastResortInfo) {
+                    note += `\n\n**FAILED:** Could not automatically locate font files.\n\n${result.lastResortInfo}`;
                 }
             }
             else {

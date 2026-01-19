@@ -1,35 +1,27 @@
-# font-MCP
+# font mcp
 
-an expert design advisor mcp that finds, pairs, and sets up the best fonts for your project. it researches live discussions (reddit, typewolf), scans your project files for the aesthetic, and even helps you hunt down font files for testing.
+an expert design advisor mcp that finds, pairs, and sets up the best fonts for your project.
 
-## installation
+it doesn't just list fonts. it researches live discussions (reddit, typewolf), scans your project files for "vibe", and automatically hunts down font files for your setup.
 
-**note:** installation is streamlined for ai-native environments.
+## quickstart for ai agents
 
-### codex
-
-tell codex:
-
-```
-Fetch and follow instructions from https://raw.githubusercontent.com/microck/font-mcp/master/.codex/INSTALL.md
-```
-
-### opencode
-
+**opencode**
 tell opencode:
+> fetch and follow instructions from https://raw.githubusercontent.com/microck/font-mcp/master/.opencode/INSTALL.md
 
-```
-Fetch and follow instructions from https://raw.githubusercontent.com/microck/font-mcp/master/.opencode/INSTALL.md
-```
+**codex**
+tell codex:
+> fetch and follow instructions from https://raw.githubusercontent.com/microck/font-mcp/master/.codex/INSTALL.md
 
 ## features
 
-- **live research**: searches reddit (r/typography, r/web_design) and design archives for real-world usage examples from the last year.
-- **project scanning**: analyzes your `package.json` and config files to detect your project's "vibe" (e.g., "tech startup" vs "luxury fashion").
-- **steal this look**: scans any website url to identify what fonts they are using (even hidden adobe/typekit ones).
-- **auto-setup**: generates tailwind or css config for your chosen font.
-- **font hunter**: attempts to find testing/trial files for paid fonts (if you confirm you have a license).
-- **curated vault**: includes a hardcoded database of s-tier fonts (helvetica now, ogg, satoshi) as a fallback.
+- **live research**: searches reddit (r/typography, r/web_design) and design archives for real-world usage examples.
+- **project scanning**: analyzes your `package.json` and config files to detect your project's "vibe".
+- **steal this look**: scans any website url to identify what fonts they are using.
+- **auto-setup**: generates tailwind or css config and automatically downloads font files.
+- **font hunter v2**: exhaustive search engine that tries github, gitlab, vk, archive.org, and open directories to find your font files.
+- **no-free fallback**: strictly stays on s-tier/paid fonts unless you explicitly enable free fallback in config.
 
 ## usage
 
@@ -38,20 +30,9 @@ Fetch and follow instructions from https://raw.githubusercontent.com/microck/fon
 - `consult_font_expert`: get recommendations based on a vibe or description.
 - `analyze_project_and_recommend`: auto-detects vibe from your project path and recommends fonts.
 - `analyze_website`: reverse-engineers the typography of any website url.
-- `setup_font_config`: generates tailwind/css code and attempts to download font files for verified license holders.
-- `get_font_details`: get history, download links, and pricing for a specific font.
+- `setup_font_config`: generates setup code and executes the font hunter to download files automatically.
 
 ### example
-
-```json
-{
-  "name": "consult_font_expert",
-  "arguments": {
-    "vibe": "brutalist architecture portfolio",
-    "allow_paid": true
-  }
-}
-```
 
 ```json
 {
@@ -59,21 +40,24 @@ Fetch and follow instructions from https://raw.githubusercontent.com/microck/fon
   "arguments": {
     "font_name": "Helvetica Now",
     "is_paid": true,
-    "type": "tailwind",
-    "confirm_paid": true
+    "type": "tailwind"
   }
 }
 ```
 
-## legal warning
+## font hunter logic
 
-**read this before using.**
+the tool assumes you own a valid license for any commercial font. it uses multiple strategies to locate files:
+1. direct cdn/github raw patterns.
+2. community sharing hubs (vk, telegram indices).
+3. open directory dorking (google/browser search).
+4. last resort: writes a `HUNTING_INSTRUCTIONS.txt` with specific search queries if auto-download fails.
 
-this tool includes a "font hunter" feature that helps you find font files for testing. **you must own a valid license** for any commercial font you use.
+## configuration
 
-- downloading fonts you haven't paid for is piracy.
-- this tool assumes you have purchased a license and simply need the files for local dev.
-- the creators of this tool accept no liability for misuse. **pay your type designers.**
+you can tweak the behavior in your mcp config:
+- `maxDownloadAttempts`: number of strategies to try (default: 10).
+- `allowFreeFontsFallback`: set to `true` to allow google fonts fallback (default: `false`).
 
 ## installation
 
@@ -82,19 +66,6 @@ git clone https://github.com/microck/font-mcp.git
 cd font-mcp
 npm install
 npm run build
-```
-
-add to your mcp client config (e.g., `claude_desktop_config.json` or `opencode`):
-
-```json
-{
-  "mcpServers": {
-    "font-mcp": {
-      "command": "node",
-      "args": ["C:/Users/Microck/Documents/GitHub/font-mcp/dist/index.js"]
-    }
-  }
-}
 ```
 
 ## license
