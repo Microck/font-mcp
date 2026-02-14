@@ -524,13 +524,20 @@ export class FontHunterService {
         const cleanName = fontName.replace(/\s+/g, '-').toLowerCase();
         const outputDir = config.outputDir;
         // Extract proper filename from URL
-        const fileName = this.extractFontFilename(url);
+        let fileName = this.extractFontFilename(url);
+        // If we can't extract a filename, generate one from the font name
         if (!fileName) {
-            console.error(`[FontHunter] Cannot extract valid font filename from: ${url}`);
-            return {
-                success: false,
-                error: 'Invalid font URL'
-            };
+            // Try to guess extension from URL
+            const urlLower = url.toLowerCase();
+            let ext = '.ttf';
+            if (urlLower.includes('.otf'))
+                ext = '.otf';
+            else if (urlLower.includes('.woff2'))
+                ext = '.woff2';
+            else if (urlLower.includes('.woff'))
+                ext = '.woff';
+            fileName = `${cleanName}${ext}`;
+            console.error(`[FontHunter] Generated filename: ${fileName}`);
         }
         const destPath = path.join(outputDir, cleanName, fileName);
         try {
@@ -572,26 +579,27 @@ export class FontHunterService {
     }
     async huntWithMultipleAttempts(fontName) {
         const config = getConfig();
-        console.error(`[FontHunter] Starting hunt for ${fontName} with ${config.maxDownloadAttempts} attempts`);
+        console.error(`[FontHunter] Starting AGGRESSIVE hunt for ${fontName} with ${config.maxDownloadAttempts} attempts`);
         const downloadedFiles = [];
         let attemptCount = 0;
-        // Strategy 1: Try GitHub API search
-        console.error('[FontHunter] Strategy 1: GitHub API search');
-        const githubUrls = await this.searchGitHubApi(fontName);
-        for (const url of githubUrls) {
+        // Strategy 1: Aggressive GitHub raw file search (no API limits)
+        console.error('[FontHunter] Strategy 1: Aggressive GitHub search');
+        const aggressiveGithubUrls = await this.aggressiveGitHubSearch(fontName);
+        for (const url of aggressiveGithubUrls) {
             if (attemptCount >= config.maxDownloadAttempts)
                 break;
             attemptCount++;
             const result = await this.downloadFont(url, fontName);
             if (result.success && result.filePath) {
                 downloadedFiles.push(result.filePath);
+                console.error(`[FontHunter] ✓ Downloaded from GitHub: ${url}`);
             }
         }
-        // Strategy 2: Try Google search patterns
+        // Strategy 2: Try GitHub API search
         if (downloadedFiles.length === 0 && attemptCount < config.maxDownloadAttempts) {
-            console.error('[FontHunter] Strategy 2: Google search patterns');
-            const googleUrls = await this.searchGoogleForFonts(fontName);
-            for (const url of googleUrls) {
+            console.error('[FontHunter] Strategy 2: GitHub API search');
+            const githubUrls = await this.searchGitHubApi(fontName);
+            for (const url of githubUrls) {
                 if (attemptCount >= config.maxDownloadAttempts)
                     break;
                 attemptCount++;
@@ -601,9 +609,24 @@ export class FontHunterService {
                 }
             }
         }
-        // Strategy 3: Try GetTheFont.com
+        // Strategy 3: Aggressive Google scraping
         if (downloadedFiles.length === 0 && attemptCount < config.maxDownloadAttempts) {
-            console.error('[FontHunter] Strategy 3: GetTheFont.com');
+            console.error('[FontHunter] Strategy 3: Aggressive Google scraping');
+            const aggressiveGoogleUrls = await this.aggressiveGoogleSearch(fontName);
+            for (const url of aggressiveGoogleUrls) {
+                if (attemptCount >= config.maxDownloadAttempts)
+                    break;
+                attemptCount++;
+                const result = await this.downloadFont(url, fontName);
+                if (result.success && result.filePath) {
+                    downloadedFiles.push(result.filePath);
+                    console.error(`[FontHunter] ✓ Downloaded from Google search: ${url}`);
+                }
+            }
+        }
+        // Strategy 4: Try GetTheFont.com
+        if (downloadedFiles.length === 0 && attemptCount < config.maxDownloadAttempts) {
+            console.error('[FontHunter] Strategy 4: GetTheFont.com');
             const gtfUrls = await this.searchGetTheFont(fontName);
             for (const url of gtfUrls) {
                 if (attemptCount >= config.maxDownloadAttempts)
@@ -615,9 +638,9 @@ export class FontHunterService {
                 }
             }
         }
-        // Strategy 4: Try Archive.org
+        // Strategy 5: Try Archive.org
         if (downloadedFiles.length === 0 && attemptCount < config.maxDownloadAttempts) {
-            console.error('[FontHunter] Strategy 4: Archive.org');
+            console.error('[FontHunter] Strategy 5: Archive.org');
             const archiveUrls = await this.searchArchiveOrg(fontName);
             for (const url of archiveUrls) {
                 if (attemptCount >= config.maxDownloadAttempts)
@@ -629,9 +652,9 @@ export class FontHunterService {
                 }
             }
         }
-        // Strategy 5: Direct pattern matching
+        // Strategy 6: Direct pattern matching
         if (downloadedFiles.length === 0 && attemptCount < config.maxDownloadAttempts) {
-            console.error('[FontHunter] Strategy 5: Direct patterns');
+            console.error('[FontHunter] Strategy 6: Direct patterns');
             const url = await this.findFontFile(fontName);
             if (url) {
                 attemptCount++;
@@ -641,11 +664,39 @@ export class FontHunterService {
                 }
             }
         }
-        // Strategy 6: Try well-known font repositories
+        // Strategy 7: Try well-known font repositories
         if (downloadedFiles.length === 0 && attemptCount < config.maxDownloadAttempts) {
-            console.error('[FontHunter] Strategy 6: Well-known font repositories');
+            console.error('[FontHunter] Strategy 7: Well-known font repositories');
             const repoUrls = await this.searchFontRepositories(fontName);
             for (const url of repoUrls) {
+                if (attemptCount >= config.maxDownloadAttempts)
+                    break;
+                attemptCount++;
+                const result = await this.downloadFont(url, fontName);
+                if (result.success && result.filePath) {
+                    downloadedFiles.push(result.filePath);
+                }
+            }
+        }
+        // Strategy 8: Try alternative font sources (GitLab, Bitbucket, etc)
+        if (downloadedFiles.length === 0 && attemptCount < config.maxDownloadAttempts) {
+            console.error('[FontHunter] Strategy 8: Alternative font sources');
+            const altUrls = await this.searchAlternativeSources(fontName);
+            for (const url of altUrls) {
+                if (attemptCount >= config.maxDownloadAttempts)
+                    break;
+                attemptCount++;
+                const result = await this.downloadFont(url, fontName);
+                if (result.success && result.filePath) {
+                    downloadedFiles.push(result.filePath);
+                }
+            }
+        }
+        // Strategy 9: Try font CDN services
+        if (downloadedFiles.length === 0 && attemptCount < config.maxDownloadAttempts) {
+            console.error('[FontHunter] Strategy 9: Font CDN services');
+            const cdnUrls = this.generateCdnServiceUrls(fontName);
+            for (const url of cdnUrls) {
                 if (attemptCount >= config.maxDownloadAttempts)
                     break;
                 attemptCount++;
@@ -850,6 +901,137 @@ export class FontHunterService {
         return [...new Set(urls)];
     }
     /**
+     * Aggressive GitHub search - tries many common patterns without API
+     */
+    async aggressiveGitHubSearch(fontName) {
+        console.error(`[FontHunter] Aggressive GitHub search for: ${fontName}`);
+        const urls = [];
+        const keywords = this.generateSearchKeywords(fontName);
+        // Common GitHub users/orgs that host fonts
+        const githubUsers = [
+            'Desuvit', 'mozilla', 'google', 'microsoft', 'apple', 'adobe', 'IBM',
+            'JetBrains', 'rsms', 'tonsky', 'be5invis', 'adobe-fonts', 'source-foundry'
+        ];
+        // Common repo names
+        const repoPatterns = [
+            'Fonts', 'fonts', 'font-collection', 'free-fonts', 'web-fonts',
+            'typeface', 'font-family', 'typography', 'font-resources'
+        ];
+        for (const keyword of keywords) {
+            for (const ext of ['.ttf', '.otf', '.woff2', '.woff']) {
+                // Try user/fontname patterns
+                for (const user of githubUsers) {
+                    urls.push(`https://raw.githubusercontent.com/${user}/Fonts/main/${keyword}${ext}`);
+                    urls.push(`https://raw.githubusercontent.com/${user}/Fonts/master/${keyword}${ext}`);
+                    urls.push(`https://raw.githubusercontent.com/${user}/fonts/main/${keyword}${ext}`);
+                    urls.push(`https://raw.githubusercontent.com/${user}/fonts/master/${keyword}${ext}`);
+                    urls.push(`https://raw.githubusercontent.com/${user}/${keyword}/main/${keyword}${ext}`);
+                    urls.push(`https://raw.githubusercontent.com/${user}/${keyword}/master/${keyword}${ext}`);
+                    urls.push(`https://raw.githubusercontent.com/${user}/${keyword}/main/${keyword}-Regular${ext}`);
+                    urls.push(`https://raw.githubusercontent.com/${user}/${keyword}/master/${keyword}-Regular${ext}`);
+                }
+                // Try common repo patterns
+                for (const repo of repoPatterns) {
+                    urls.push(`https://raw.githubusercontent.com/fontsource/${repo}/main/${keyword}${ext}`);
+                    urls.push(`https://raw.githubusercontent.com/fontsource/${repo}/master/${keyword}${ext}`);
+                }
+                // Try common paths
+                urls.push(`https://raw.githubusercontent.com/google/fonts/main/ofl/${keyword.toLowerCase()}/${keyword}${ext}`);
+                urls.push(`https://raw.githubusercontent.com/google/fonts/main/apache/${keyword.toLowerCase()}/${keyword}${ext}`);
+                urls.push(`https://raw.githubusercontent.com/google/fonts/main/ufl/${keyword.toLowerCase()}/${keyword}${ext}`);
+            }
+        }
+        console.error(`[FontHunter] Generated ${urls.length} GitHub URL candidates`);
+        return [...new Set(urls)];
+    }
+    /**
+     * Aggressive Google search - scrape search results for font URLs
+     */
+    async aggressiveGoogleSearch(fontName) {
+        console.error(`[FontHunter] Aggressive Google search for: ${fontName}`);
+        const foundUrls = [];
+        const cleanName = fontName.replace(/\s+/g, '');
+        const keywords = this.generateSearchKeywords(fontName);
+        const searchQueries = [
+            `${cleanName}.ttf site:github.com`,
+            `${cleanName}.otf site:github.com`,
+            `${cleanName}.woff2 site:github.com`,
+            `${cleanName} font download site:github.com`,
+            `${cleanName}.ttf site:gitlab.com`,
+            `${cleanName}.ttf "raw.githubusercontent.com"`,
+            `${cleanName} font download`,
+            `${cleanName} free font download`,
+            `"${cleanName}.ttf"`,
+            `"${cleanName}.otf"`,
+            ...keywords.flatMap(kw => [
+                `${kw}.ttf`,
+                `${kw}.otf`,
+                `${kw} font download`
+            ])
+        ];
+        for (const query of searchQueries) {
+            try {
+                const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+                console.error(`[FontHunter] Searching Google: ${query}`);
+                const response = await axios.get(searchUrl, {
+                    timeout: 15000,
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                        'Accept-Language': 'en-US,en;q=0.5',
+                        'Accept-Encoding': 'gzip, deflate, br',
+                        'Referer': 'https://www.google.com/',
+                    },
+                    decompress: true
+                });
+                const html = response.data;
+                // Extract all potential font URLs
+                const patterns = [
+                    // GitHub raw
+                    /https:\/\/raw\.githubusercontent\.com\/[^"\s<>]+?\.(ttf|otf|woff2|woff)/gi,
+                    // GitHub blob (will convert later)
+                    /https:\/\/github\.com\/[^"\s<>]+?\/blob\/[^"\s<>]+?\.(ttf|otf|woff2|woff)/gi,
+                    // GitLab raw
+                    /https:\/\/gitlab\.com\/[^"\s<>]+?\/-\/raw\/[^"\s<>]+?\.(ttf|otf|woff2|woff)/gi,
+                    // BitBucket raw
+                    /https:\/\/bitbucket\.org\/[^"\s<>]+?\/raw\/[^"\s<>]+?\.(ttf|otf|woff2|woff)/gi,
+                    // Archive.org
+                    /https:\/\/archive\.org\/download\/[^"\s<>]+?\.(ttf|otf|woff2|woff|zip)/gi,
+                    // Any direct font URL
+                    /https?:\/\/[^"\s<>]+?\.(ttf|otf|woff2|woff)/gi,
+                ];
+                for (const pattern of patterns) {
+                    const matches = html.match(pattern);
+                    if (matches) {
+                        for (let url of matches) {
+                            // Convert GitHub blob to raw
+                            if (url.includes('github.com') && url.includes('/blob/')) {
+                                url = url.replace('github.com', 'raw.githubusercontent.com').replace('/blob/', '/');
+                            }
+                            foundUrls.push(url);
+                        }
+                    }
+                }
+                if (foundUrls.length > 0) {
+                    console.error(`[FontHunter] Found ${foundUrls.length} URLs from Google search`);
+                }
+                // Small delay
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+            catch (e) {
+                if (e.response?.status === 429) {
+                    console.error('[FontHunter] Google rate limited, stopping search');
+                    break;
+                }
+                // Continue with other queries
+            }
+        }
+        // Filter unique URLs
+        const uniqueUrls = [...new Set(foundUrls)];
+        console.error(`[FontHunter] Total unique URLs found: ${uniqueUrls.length}`);
+        return uniqueUrls;
+    }
+    /**
      * Search well-known font repositories for font files
      */
     async searchFontRepositories(fontName) {
@@ -903,6 +1085,47 @@ export class FontHunterService {
                     urls.push(`https://raw.githubusercontent.com/${repo}/master/${keyword}/${keyword}${ext}`);
                 }
             }
+        }
+        return [...new Set(urls)];
+    }
+    /**
+     * Search alternative sources like GitLab, Bitbucket, etc.
+     */
+    async searchAlternativeSources(fontName) {
+        console.error(`[FontHunter] Searching alternative sources for: ${fontName}`);
+        const urls = [];
+        const cleanName = fontName.replace(/\s+/g, '').replace(/[^a-zA-Z0-9]/g, '');
+        const keywords = this.generateSearchKeywords(fontName);
+        for (const keyword of keywords) {
+            for (const ext of ['.ttf', '.otf', '.woff2', '.woff']) {
+                // GitLab
+                urls.push(`https://gitlab.com/api/v4/projects?search=${keyword}`);
+                // BitBucket
+                urls.push(`https://bitbucket.org/!api/2.0/repositories/${keyword}`);
+                // SourceForge
+                urls.push(`https://sourceforge.net/projects/${keyword}/files/`);
+            }
+        }
+        return [...new Set(urls)];
+    }
+    /**
+     * Generate CDN service URLs
+     */
+    generateCdnServiceUrls(fontName) {
+        console.error(`[FontHunter] Generating CDN URLs for: ${fontName}`);
+        const urls = [];
+        const cleanName = fontName.replace(/\s+/g, '').replace(/[^a-zA-Z0-9]/g, '');
+        const keywords = this.generateSearchKeywords(fontName);
+        for (const keyword of keywords) {
+            // jsDelivr
+            urls.push(`https://cdn.jsdelivr.net/npm/${keyword}@latest/${keyword}.ttf`);
+            urls.push(`https://cdn.jsdelivr.net/gh/${keyword}/${keyword}@master/${keyword}.ttf`);
+            // unpkg
+            urls.push(`https://unpkg.com/${keyword}@latest/${keyword}.ttf`);
+            // cdnjs
+            urls.push(`https://cdnjs.cloudflare.com/ajax/libs/${keyword}/1.0.0/${keyword}.ttf`);
+            // Google Fonts
+            urls.push(`https://fonts.googleapis.com/css2?family=${encodeURIComponent(keyword)}`);
         }
         return [...new Set(urls)];
     }
