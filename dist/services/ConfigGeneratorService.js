@@ -1,3 +1,4 @@
+import { getConfig } from '../config.js';
 export class ConfigGeneratorService {
     async generateTailwindConfig(fontName, format = 'modern') {
         const safeName = fontName.replace(/ /g, '-').toLowerCase();
@@ -17,17 +18,11 @@ module.exports = {
         return snippet.trim();
     }
     async generateCssSetup(fontName, isPaid) {
+        const config = getConfig();
         const familyName = fontName;
         const fileName = fontName.replace(/ /g, '');
-        if (isPaid) {
+        if (isPaid || !config.allowFreeFontsFallback) {
             return `
-/* 
-   SETUP INSTRUCTIONS FOR PAID FONT: ${fontName}
-   1. Buy/License the font from the foundry.
-   2. Download the webfont files (.woff2, .woff).
-   3. Place them in: /public/fonts/${fileName}/
-*/
-
 @font-face {
   font-family: '${familyName}';
   src: url('/fonts/${fileName}/${fileName}-Regular.woff2') format('woff2'),
@@ -51,7 +46,6 @@ module.exports = {
             return `
 /* 
    SETUP FOR FREE FONT: ${fontName}
-   (Assuming Google Fonts import for simplicity, or download)
 */
 @import url('https://fonts.googleapis.com/css2?family=${fontName.replace(/ /g, '+')}:wght@400;700&display=swap');
 

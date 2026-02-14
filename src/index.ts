@@ -241,8 +241,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
             const result = await fontHunter.huntWithMultipleAttempts(fontName);
 
-            if (result.success && result.filePath) {
-                note += `\n\n**SUCCESS:** Font downloaded to \`${result.filePath}\`\n\nThe font files are now ready for use. Update your CSS/Tailwind config to reference these files.`;
+            if (result.success && result.filePaths && result.filePaths.length > 0) {
+                note += `\n\n**SUCCESS:** Downloaded ${result.filePaths.length} font file(s):\n`;
+                result.filePaths.forEach((filePath, index) => {
+                    note += `\n${index + 1}. \`${filePath}\``;
+                });
+                note += `\n\nThe font files are now ready for use. Update your CSS/Tailwind config to reference these files.`;
             } else if (result.lastResortInfo) {
                 note += `\n\n**FAILED:** Could not automatically locate font files.\n\n${result.lastResortInfo}`;
             }
