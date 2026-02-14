@@ -90,7 +90,8 @@ export class FontHunterService {
         for (const weight of this.fontWeights) {
             for (const ext of this.fontExtensions) {
                 const url = this.tryDirectPattern(cleanName, weight, ext);
-                if (await this.testUrl(url)) {
+                // Only test if it looks like a font URL
+                if (this.isFontUrl(url) && await this.testUrl(url)) {
                     console.error(`[FontHunter] Found via direct pattern: ${url}`);
                     return url;
                 }
@@ -103,7 +104,8 @@ export class FontHunterService {
             console.error(`[FontHunter] Trying source: ${source.name}`);
             const urls = await this.searchSource(source, fontName, cleanName, keywords);
             for (const url of urls) {
-                if (await this.testUrl(url)) {
+                // Only test URLs that look like font files
+                if (this.isFontUrl(url) && await this.testUrl(url)) {
                     console.error(`[FontHunter] Found via ${source.name}: ${url}`);
                     return url;
                 }
@@ -114,7 +116,7 @@ export class FontHunterService {
     async tryCdnPatterns(cleanName) {
         const cdnUrls = this.generateCdnPatterns(cleanName);
         for (const url of cdnUrls) {
-            if (await this.testUrl(url)) {
+            if (this.isFontUrl(url) && await this.testUrl(url)) {
                 console.error(`[FontHunter] Found via CDN: ${url}`);
                 return url;
             }
@@ -124,7 +126,7 @@ export class FontHunterService {
     async tryArchivePatterns(cleanName) {
         const archiveUrls = this.generateArchivePatterns(cleanName);
         for (const url of archiveUrls) {
-            if (await this.testUrl(url)) {
+            if (this.isFontUrl(url) && await this.testUrl(url)) {
                 console.error(`[FontHunter] Found via archive: ${url}`);
                 return url;
             }
@@ -135,7 +137,7 @@ export class FontHunterService {
         console.error(`[FontHunter] Trying Google/Browser search patterns`);
         const searchPatterns = this.generateGoogleSearchPatterns(fontName, cleanName, keywords);
         for (const pattern of searchPatterns) {
-            if (await this.testUrl(pattern.url)) {
+            if (this.isFontUrl(pattern.url) && await this.testUrl(pattern.url)) {
                 console.error(`[FontHunter] Found via Google search pattern: ${pattern.url}`);
                 return pattern.url;
             }
@@ -331,36 +333,31 @@ export class FontHunterService {
     extractFontUrlsFromHtml(html, cleanName, keywords) {
         const urls = [];
         // Pattern to match GitHub raw URLs
-        const githubRawPattern = /https:\/\/raw\.githubusercontent\.com\/[^"\s<>]+\.(ttf|otf|woff2)/gi;
+        const githubRawPattern = /https:\/\/raw\.githubusercontent\.com\/[^"\s<>]+\.(ttf|otf|woff2|woff)/gi;
         const githubMatches = html.match(githubRawPattern);
         if (githubMatches) {
+            console.error(`[FontHunter] Found ${githubMatches.length} GitHub raw URLs`);
             urls.push(...githubMatches);
         }
         // Pattern to match GitHub blob URLs (need to convert to raw)
-        const githubBlobPattern = /https:\/\/github\.com\/([^"\s<>]+)\/blob\/([^"\s<>]+\.)(ttf|otf|woff2)/gi;
+        const githubBlobPattern = /https:\/\/github\.com\/([^"\s<>]+)\/blob\/([^"\s<>]+\.)(ttf|otf|woff2|woff)/gi;
         let blobMatch;
         while ((blobMatch = githubBlobPattern.exec(html)) !== null) {
             const rawUrl = blobMatch[0].replace('/blob/', '/raw/');
             urls.push(rawUrl);
         }
-        // Pattern to match any .ttf, .otf, or .woff2 URLs
-        const fontUrlPattern = /https?:\/\/[^"\s<>]+\.(ttf|otf|woff2)/gi;
+        // Pattern to match any font URLs
+        const fontUrlPattern = /https?:\/\/[^"\s<>]+\.(ttf|otf|woff2|woff)/gi;
         const fontMatches = html.match(fontUrlPattern);
         if (fontMatches) {
+            console.error(`[FontHunter] Found ${fontMatches.length} font URLs`);
             urls.push(...fontMatches);
         }
-        // Pattern for vk.com (usually links to files)
-        const vkPattern = /https:\/\/vk\.com\/[^"\s<>]+/gi;
-        const vkMatches = html.match(vkPattern);
-        if (vkMatches) {
-            // VK links typically redirect to downloads, we'd need to follow them
-            // For now, just log them
-            console.error(`[FontHunter] Found VK links: ${vkMatches.length}`);
-        }
-        // Pattern for archive.org
-        const archivePattern = /https:\/\/archive\.org\/download\/[^"\s<>]+/gi;
+        // Pattern for archive.org direct download links
+        const archivePattern = /https:\/\/archive\.org\/download\/[^"\s<>]+\.(ttf|otf|woff2|woff|zip)/gi;
         const archiveMatches = html.match(archivePattern);
         if (archiveMatches) {
+            console.error(`[FontHunter] Found ${archiveMatches.length} Archive.org URLs`);
             urls.push(...archiveMatches);
         }
         // Pattern for GetTheFont.com
@@ -377,7 +374,9 @@ export class FontHunterService {
             return lowerUrl.includes(lowerName) ||
                 keywords.some((kw) => lowerUrl.includes(kw.toLowerCase()));
         });
-        return relevantUrls.length > 0 ? relevantUrls : uniqueUrls;
+        const finalUrls = relevantUrls.length > 0 ? relevantUrls : uniqueUrls;
+        console.error(`[FontHunter] Extracted ${finalUrls.length} unique font URLs from HTML`);
+        return finalUrls;
     }
     generateSearchKeywords(fontName) {
         const words = fontName.split(/\s+/);
@@ -441,35 +440,122 @@ export class FontHunterService {
         }
         return urls;
     }
+    isFontUrl(url) {
+        const fontExtensions = ['.ttf', '.otf', '.woff', '.woff2', '.eot'];
+        const lowerUrl = url.toLowerCase();
+        return fontExtensions.some(ext => lowerUrl.endsWith(ext));
+    }
     async testUrl(url) {
         const config = getConfig();
+        // Only test URLs that actually look like font files
+        if (!this.isFontUrl(url)) {
+            console.error(`[FontHunter] Skipping non-font URL: ${url}`);
+            return false;
+        }
         try {
             const response = await axios.head(url, {
                 timeout: config.downloadTimeoutMs,
                 validateStatus: (status) => status >= 200 && status < 400
             });
+            // Check content type to ensure it's a font file
+            const contentType = response.headers['content-type'] || '';
+            const isFontContent = contentType.includes('font') ||
+                contentType.includes('octet-stream') ||
+                contentType.includes('application/x-font') ||
+                contentType === '' || // Some servers don't set content-type
+                this.isFontUrl(url);
+            if (!isFontContent) {
+                console.error(`[FontHunter] URL returned non-font content-type: ${contentType}`);
+                return false;
+            }
             return response.status >= 200 && response.status < 400;
         }
         catch (e) {
             return false;
         }
     }
+    isValidFontBuffer(buffer) {
+        // Check font file magic bytes
+        if (buffer.length < 4)
+            return false;
+        // TrueType / OpenType (ttf/otf)
+        if (buffer[0] === 0x00 && buffer[1] === 0x01 && buffer[2] === 0x00 && buffer[3] === 0x00)
+            return true;
+        // OpenType with CFF (otf)
+        if (buffer[0] === 0x4F && buffer[1] === 0x54 && buffer[2] === 0x54 && buffer[3] === 0x4F)
+            return true;
+        // WOFF
+        if (buffer[0] === 0x77 && buffer[1] === 0x4F && buffer[2] === 0x46 && buffer[3] === 0x46)
+            return true;
+        // WOFF2
+        if (buffer[0] === 0x77 && buffer[1] === 0x4F && buffer[2] === 0x46 && buffer[3] === 0x32)
+            return true;
+        // EOT
+        if (buffer[0] === 0x50 && buffer[1] === 0x4C && buffer[2] === 0x53 && buffer[3] === 0x59)
+            return true;
+        // Check if it's HTML (should reject)
+        const header = buffer.slice(0, 100).toString('utf-8').toLowerCase();
+        if (header.includes('<!doctype html') || header.includes('<html') || header.includes('<head')) {
+            console.error('[FontHunter] Rejecting HTML content');
+            return false;
+        }
+        // If it has a font extension and reasonable size, assume it's valid
+        return buffer.length > 1000;
+    }
+    extractFontFilename(url) {
+        try {
+            // Remove query parameters
+            const urlWithoutQuery = url.split('?')[0];
+            let fileName = path.basename(urlWithoutQuery);
+            // Ensure it has a font extension
+            if (!this.isFontUrl(fileName)) {
+                return null;
+            }
+            // Clean up the filename
+            fileName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+            return fileName;
+        }
+        catch (e) {
+            return null;
+        }
+    }
     async downloadFont(url, fontName) {
         const config = getConfig();
         const cleanName = fontName.replace(/\s+/g, '-').toLowerCase();
         const outputDir = config.outputDir;
-        const fileName = path.basename(url);
+        // Extract proper filename from URL
+        const fileName = this.extractFontFilename(url);
+        if (!fileName) {
+            console.error(`[FontHunter] Cannot extract valid font filename from: ${url}`);
+            return {
+                success: false,
+                error: 'Invalid font URL'
+            };
+        }
         const destPath = path.join(outputDir, cleanName, fileName);
         try {
             // Ensure directory exists
             await fs.mkdir(path.dirname(destPath), { recursive: true });
+            console.error(`[FontHunter] Downloading from: ${url}`);
             const response = await axios.get(url, {
                 responseType: 'arraybuffer',
                 timeout: config.downloadTimeoutMs,
-                validateStatus: (status) => status >= 200 && status < 400
+                validateStatus: (status) => status >= 200 && status < 400,
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                }
             });
-            await fs.writeFile(destPath, response.data);
-            console.error(`[FontHunter] Successfully downloaded ${fontName} to ${destPath}`);
+            const buffer = Buffer.from(response.data);
+            // Validate it's actually a font file
+            if (!this.isValidFontBuffer(buffer)) {
+                console.error(`[FontHunter] Downloaded content is not a valid font file: ${url}`);
+                return {
+                    success: false,
+                    error: 'Downloaded content is not a valid font file'
+                };
+            }
+            await fs.writeFile(destPath, buffer);
+            console.error(`[FontHunter] Successfully downloaded ${fontName} to ${destPath} (${buffer.length} bytes)`);
             return {
                 success: true,
                 filePath: destPath
@@ -555,6 +641,20 @@ export class FontHunterService {
                 }
             }
         }
+        // Strategy 6: Try well-known font repositories
+        if (downloadedFiles.length === 0 && attemptCount < config.maxDownloadAttempts) {
+            console.error('[FontHunter] Strategy 6: Well-known font repositories');
+            const repoUrls = await this.searchFontRepositories(fontName);
+            for (const url of repoUrls) {
+                if (attemptCount >= config.maxDownloadAttempts)
+                    break;
+                attemptCount++;
+                const result = await this.downloadFont(url, fontName);
+                if (result.success && result.filePath) {
+                    downloadedFiles.push(result.filePath);
+                }
+            }
+        }
         if (downloadedFiles.length > 0) {
             console.error(`[FontHunter] Successfully downloaded ${downloadedFiles.length} font file(s)`);
             return {
@@ -581,65 +681,97 @@ export class FontHunterService {
         try {
             for (const keyword of keywords) {
                 // Search for .ttf files
-                const ttfResponse = await axios.get(`https://api.github.com/search/code?q=${encodeURIComponent(keyword)}+extension:ttf&per_page=10`, {
-                    timeout: 10000,
-                    headers: {
-                        'Accept': 'application/vnd.github.v3+json',
-                        'User-Agent': 'FontHunter-MCP'
-                    }
-                });
-                if (ttfResponse.data.items) {
-                    for (const item of ttfResponse.data.items) {
-                        if (item.html_url) {
-                            const rawUrl = item.html_url
-                                .replace('github.com', 'raw.githubusercontent.com')
-                                .replace('/blob/', '/');
-                            urls.push(rawUrl);
+                try {
+                    const ttfResponse = await axios.get(`https://api.github.com/search/code?q=${encodeURIComponent(keyword)}+extension:ttf&per_page=10`, {
+                        timeout: 10000,
+                        headers: {
+                            'Accept': 'application/vnd.github.v3+json',
+                            'User-Agent': 'FontHunter-MCP'
                         }
+                    });
+                    if (ttfResponse.data && ttfResponse.data.items) {
+                        for (const item of ttfResponse.data.items) {
+                            if (item.html_url) {
+                                const rawUrl = item.html_url
+                                    .replace('github.com', 'raw.githubusercontent.com')
+                                    .replace('/blob/', '/');
+                                urls.push(rawUrl);
+                            }
+                        }
+                        console.error(`[FontHunter] GitHub API found ${ttfResponse.data.items.length} .ttf files for "${keyword}"`);
                     }
+                }
+                catch (e) {
+                    if (e.response?.status === 403) {
+                        console.error('[FontHunter] GitHub API rate limited, skipping API search');
+                        return [...new Set(urls)]; // Return early if rate limited
+                    }
+                    console.error(`[FontHunter] GitHub .ttf search failed for "${keyword}":`, e.message);
                 }
                 // Search for .otf files
-                const otfResponse = await axios.get(`https://api.github.com/search/code?q=${encodeURIComponent(keyword)}+extension:otf&per_page=10`, {
-                    timeout: 10000,
-                    headers: {
-                        'Accept': 'application/vnd.github.v3+json',
-                        'User-Agent': 'FontHunter-MCP'
-                    }
-                });
-                if (otfResponse.data.items) {
-                    for (const item of otfResponse.data.items) {
-                        if (item.html_url) {
-                            const rawUrl = item.html_url
-                                .replace('github.com', 'raw.githubusercontent.com')
-                                .replace('/blob/', '/');
-                            urls.push(rawUrl);
+                try {
+                    const otfResponse = await axios.get(`https://api.github.com/search/code?q=${encodeURIComponent(keyword)}+extension:otf&per_page=10`, {
+                        timeout: 10000,
+                        headers: {
+                            'Accept': 'application/vnd.github.v3+json',
+                            'User-Agent': 'FontHunter-MCP'
                         }
+                    });
+                    if (otfResponse.data && otfResponse.data.items) {
+                        for (const item of otfResponse.data.items) {
+                            if (item.html_url) {
+                                const rawUrl = item.html_url
+                                    .replace('github.com', 'raw.githubusercontent.com')
+                                    .replace('/blob/', '/');
+                                urls.push(rawUrl);
+                            }
+                        }
+                        console.error(`[FontHunter] GitHub API found ${otfResponse.data.items.length} .otf files for "${keyword}"`);
                     }
                 }
+                catch (e) {
+                    if (e.response?.status === 403) {
+                        console.error('[FontHunter] GitHub API rate limited, skipping API search');
+                        return [...new Set(urls)];
+                    }
+                    console.error(`[FontHunter] GitHub .otf search failed for "${keyword}":`, e.message);
+                }
                 // Search for .woff2 files
-                const woff2Response = await axios.get(`https://api.github.com/search/code?q=${encodeURIComponent(keyword)}+extension:woff2&per_page=10`, {
-                    timeout: 10000,
-                    headers: {
-                        'Accept': 'application/vnd.github.v3+json',
-                        'User-Agent': 'FontHunter-MCP'
-                    }
-                });
-                if (woff2Response.data.items) {
-                    for (const item of woff2Response.data.items) {
-                        if (item.html_url) {
-                            const rawUrl = item.html_url
-                                .replace('github.com', 'raw.githubusercontent.com')
-                                .replace('/blob/', '/');
-                            urls.push(rawUrl);
+                try {
+                    const woff2Response = await axios.get(`https://api.github.com/search/code?q=${encodeURIComponent(keyword)}+extension:woff2&per_page=10`, {
+                        timeout: 10000,
+                        headers: {
+                            'Accept': 'application/vnd.github.v3+json',
+                            'User-Agent': 'FontHunter-MCP'
                         }
+                    });
+                    if (woff2Response.data && woff2Response.data.items) {
+                        for (const item of woff2Response.data.items) {
+                            if (item.html_url) {
+                                const rawUrl = item.html_url
+                                    .replace('github.com', 'raw.githubusercontent.com')
+                                    .replace('/blob/', '/');
+                                urls.push(rawUrl);
+                            }
+                        }
+                        console.error(`[FontHunter] GitHub API found ${woff2Response.data.items.length} .woff2 files for "${keyword}"`);
                     }
+                }
+                catch (e) {
+                    if (e.response?.status === 403) {
+                        console.error('[FontHunter] GitHub API rate limited, skipping API search');
+                        return [...new Set(urls)];
+                    }
+                    console.error(`[FontHunter] GitHub .woff2 search failed for "${keyword}":`, e.message);
                 }
             }
         }
         catch (e) {
             console.error('[FontHunter] GitHub API search failed:', e);
         }
-        return [...new Set(urls)];
+        const uniqueUrls = [...new Set(urls)];
+        console.error(`[FontHunter] GitHub API found ${uniqueUrls.length} unique font URLs total`);
+        return uniqueUrls;
     }
     /**
      * Search GetTheFont.com for font files
@@ -714,6 +846,63 @@ export class FontHunterService {
         }
         catch (e) {
             console.error('[FontHunter] Archive.org search failed:', e);
+        }
+        return [...new Set(urls)];
+    }
+    /**
+     * Search well-known font repositories for font files
+     */
+    async searchFontRepositories(fontName) {
+        console.error(`[FontHunter] Searching font repositories for: ${fontName}`);
+        const urls = [];
+        const cleanName = fontName.replace(/\s+/g, '').replace(/[^a-zA-Z0-9]/g, '');
+        const keywords = this.generateSearchKeywords(fontName);
+        // Try common font repository patterns
+        const repositoryPatterns = [
+            // Fontsource (npm)
+            `https://cdn.jsdelivr.net/npm/@fontsource/${cleanName.toLowerCase()}/files/${cleanName.toLowerCase()}-latin-400-normal.woff2`,
+            `https://cdn.jsdelivr.net/npm/@fontsource/${cleanName.toLowerCase()}/files/${cleanName.toLowerCase()}-latin-400-normal.woff`,
+            // Google Fonts (if available)
+            `https://fonts.gstatic.com/s/${cleanName.toLowerCase()}/${cleanName.toLowerCase()}-regular.woff2`,
+            // Common GitHub font repos
+            `https://raw.githubusercontent.com/Desuvit/Fonts/main/${cleanName}.ttf`,
+            `https://raw.githubusercontent.com/Desuvit/Fonts/main/${cleanName}.otf`,
+            `https://raw.githubusercontent.com/Desuvit/Fonts/main/${cleanName}.woff2`,
+            // Font Squirrel-style URLs
+            `https://www.fontsquirrel.com/fonts/download/${cleanName.toLowerCase()}`,
+            // DaFont (direct download attempts)
+            `https://dl.dafont.com/dl/?f=${cleanName.toLowerCase().replace(/\s+/g, '_')}`,
+        ];
+        for (const url of repositoryPatterns) {
+            if (this.isFontUrl(url)) {
+                urls.push(url);
+            }
+        }
+        // Try searching for font in common GitHub repositories
+        const githubRepos = [
+            'google/fonts',
+            'Desuvit/Fonts',
+            'fontsource/font-files',
+            'JetBrains/JetBrainsMono',
+            'IBM/plex',
+            'mozilla/Fira',
+            'rsms/inter',
+            'adobe-fonts/source-code-pro',
+            'adobe-fonts/source-sans-pro',
+            'adobe-fonts/source-serif-pro',
+        ];
+        for (const repo of githubRepos) {
+            for (const keyword of keywords) {
+                for (const ext of ['.ttf', '.otf', '.woff2', '.woff']) {
+                    // Try various naming patterns
+                    urls.push(`https://raw.githubusercontent.com/${repo}/main/${keyword}${ext}`);
+                    urls.push(`https://raw.githubusercontent.com/${repo}/master/${keyword}${ext}`);
+                    urls.push(`https://raw.githubusercontent.com/${repo}/main/fonts/${keyword}${ext}`);
+                    urls.push(`https://raw.githubusercontent.com/${repo}/master/fonts/${keyword}${ext}`);
+                    urls.push(`https://raw.githubusercontent.com/${repo}/main/${keyword}/${keyword}${ext}`);
+                    urls.push(`https://raw.githubusercontent.com/${repo}/master/${keyword}/${keyword}${ext}`);
+                }
+            }
         }
         return [...new Set(urls)];
     }
