@@ -7,7 +7,19 @@ export interface ProjectAnalysis {
     technicalStack: string[];
 }
 
+/**
+ * Scans a local project directory to infer its "vibe" and tech stack.
+ * Reads package.json, config files, and heuristics to generate keyword-based
+ * font recommendations without any live data fetching.
+ */
 export class ProjectScannerService {
+    /**
+     * Analyzes a project directory and returns a vibe classification.
+     * Reads package.json for dependencies and keywords; applies heuristics
+     * to map the project's purpose to a font recommendation vibe.
+     * @param projectPath - Absolute path to the project root directory.
+     * @returns ProjectAnalysis with vibe, keywords, and detected tech stack.
+     */
     async analyzeProject(projectPath: string): Promise<ProjectAnalysis> {
         const keywords: Set<string> = new Set();
         const techStack: Set<string> = new Set();

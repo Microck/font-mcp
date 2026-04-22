@@ -9,9 +9,19 @@ export interface DetectedFont {
     isPaidLikely: boolean;
 }
 
+/**
+ * Detects font families used on a live website by parsing HTML, CSS,
+ * and <link> tags from known font providers (Google Fonts, Adobe, etc.).
+ */
 export class WebFontDetectorService {
     private readonly userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36';
 
+    /**
+     * Fetches a webpage and extracts all detectable font families.
+     * Identifies Google Fonts, Adobe Fonts, Typography.com, and self-hosted fonts.
+     * @param targetUrl - The website URL to analyze.
+     * @returns Array of DetectedFont objects with family, source, and license hints.
+     */
     async analyzeUrl(targetUrl: string): Promise<DetectedFont[]> {
         try {
             const response = await axios.get(targetUrl, {
