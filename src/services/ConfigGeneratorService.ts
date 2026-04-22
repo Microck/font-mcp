@@ -4,7 +4,7 @@ import { getConfig } from '../config.js';
 
 export class ConfigGeneratorService {
     
-    async generateTailwindConfig(fontName: string, format: 'modern' | 'legacy' = 'modern'): Promise<string> {
+    async generateTailwindConfig(fontName: string): Promise<string> {
         const safeName = fontName.replace(/ /g, '-').toLowerCase();
         const familyName = fontName;
 
