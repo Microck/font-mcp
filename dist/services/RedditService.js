@@ -1,6 +1,16 @@
 import axios from 'axios';
+/**
+ * Fetches recent Reddit discussions from typography and design subreddits.
+ * Searches r/typography, r/fonts, r/design, and r/web_design.
+ */
 export class RedditService {
     userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36';
+    /**
+     * Searches Reddit for posts mentioning the given font or design query.
+     * Only returns posts from the last year, sorted by score.
+     * @param query - Font name or design keyword to search for.
+     * @returns Up to 5 RedditPost objects sorted by score (highest first).
+     */
     async searchReddit(query) {
         const subreddits = ['typography', 'fonts', 'design', 'web_design'];
         const limit = 5;
