@@ -237,6 +237,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
 });
 // Start Server
+/**
+ * Connects the MCP server to stdio transport and starts listening for requests.
+ * This is the main entry point; call run() to start the server.
+ */
 async function run() {
     const transport = new StdioServerTransport();
     await server.connect(transport);

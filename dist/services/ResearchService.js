@@ -1,12 +1,21 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { RedditService } from './RedditService.js';
+/**
+ * Aggregates font recommendations from live design sources:
+ * Typewolf, FontsInUse, and Reddit (r/typography, r/fonts, r/design).
+ */
 export class ResearchService {
     userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36';
     redditService;
     constructor() {
         this.redditService = new RedditService();
     }
+    /**
+     * Searches Typewolf.com for design examples matching the given vibe.
+     * @param vibe - Design aesthetic keyword (e.g. "luxury", "editorial").
+     * @returns Array of ResearchResult objects with font names and source URLs.
+     */
     async searchTypewolf(vibe) {
         try {
             // Search Typewolf
@@ -48,6 +57,11 @@ export class ResearchService {
             return [];
         }
     }
+    /**
+     * Searches FontsInUse.com for real-world type usage matching the given vibe.
+     * @param vibe - Design aesthetic keyword.
+     * @returns Array of ResearchResult objects with identified font families.
+     */
     async searchFontsInUse(vibe) {
         try {
             // Search FontsInUse

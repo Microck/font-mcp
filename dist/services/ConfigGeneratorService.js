@@ -1,5 +1,15 @@
 import { getConfig } from '../config.js';
+/**
+ * Generates CSS and Tailwind configuration snippets for web fonts.
+ * Supports both free (Google Fonts) and paid/self-hosted font setups.
+ */
 export class ConfigGeneratorService {
+    /**
+     * Generates a Tailwind CSS fontFamily extension snippet for the given font.
+     * @param fontName - Display name of the font (e.g. "Inter").
+     * @param format - "modern" (CSS custom properties) or "legacy" (traditional config). Defaults to "modern".
+     * @returns Tailwind config extension as a string.
+     */
     async generateTailwindConfig(fontName, format = 'modern') {
         const safeName = fontName.replace(/ /g, '-').toLowerCase();
         const familyName = fontName;
@@ -17,6 +27,13 @@ module.exports = {
 `;
         return snippet.trim();
     }
+    /**
+     * Generates a self-hosted @font-face CSS block for the given font.
+     * For free fonts without a paid flag, falls back to a Google Fonts @import.
+     * @param fontName - Display name of the font.
+     * @param isPaid - Whether the font requires a commercial license.
+     * @returns CSS @font-face block or Google Fonts @import as a string.
+     */
     async generateCssSetup(fontName, isPaid) {
         const config = getConfig();
         const familyName = fontName;
