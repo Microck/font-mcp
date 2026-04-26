@@ -1,6 +1,6 @@
 import { getConfig } from '../config.js';
 export class ConfigGeneratorService {
-    async generateTailwindConfig(fontName, format = 'modern') {
+    async generateTailwindConfig(fontName) {
         const safeName = fontName.replace(/ /g, '-').toLowerCase();
         const familyName = fontName;
         const snippet = `
