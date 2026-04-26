@@ -7,10 +7,9 @@ export class ConfigGeneratorService {
     /**
      * Generates a Tailwind CSS fontFamily extension snippet for the given font.
      * @param fontName - Display name of the font (e.g. "Inter").
-     * @param format - "modern" (CSS custom properties) or "legacy" (traditional config). Defaults to "modern".
      * @returns Tailwind config extension as a string.
      */
-    async generateTailwindConfig(fontName, format = 'modern') {
+    async generateTailwindConfig(fontName) {
         const safeName = fontName.replace(/ /g, '-').toLowerCase();
         const familyName = fontName;
         const snippet = `
