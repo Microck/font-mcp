@@ -154,7 +154,7 @@ You can tweak the behavior in your MCP config:
 |--------|------|---------|-------------|
 | `maxDownloadAttempts` | number | `10` | Number of download strategies to try |
 | `downloadTimeoutMs` | number | `30000` | Timeout in milliseconds for each font download request |
-| `outputDir` | string | `'./public/fonts'` | Directory where downloaded font files are written |
+| `outputDir` | string | `'./public/fonts'` | Directory where downloaded font files and hunt artifacts are written |
 | `allowFreeFontsFallback` | boolean | `false` | Set to `true` to allow Google Fonts fallback |
 
 ## How It Works
